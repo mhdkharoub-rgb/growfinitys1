@@ -1,4 +1,6 @@
 import { readJsonBody, sendJson, signAppToken } from "./_lib/auth.js";
+import { connectDB } from "./_lib/db.js";
+import User from "../../models/User.js";
 
 const PI_API_BASE = "https://api.minepi.com";
 
@@ -36,6 +38,13 @@ export default async function handler(req, res) {
   const username = me?.username;
 
   if (!uid || !username) return sendJson(res, 502, { error: "Unexpected Pi /me response", me });
+
+  await connectDB();
+
+  let user = await User.findOne({ uid });
+  if (!user) {
+    user = await User.create({ uid, username });
+  }
 
   const appToken = signAppToken({ uid, username });
 
