@@ -1,36 +1,48 @@
-const out = document.getElementById("out");
-const btn = document.getElementById("btn");
+const loginView = document.getElementById("loginView");
+const dashboardView = document.getElementById("dashboardView");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const usernameEl = document.getElementById("username");
 
-function setOut(t) { out.textContent = t; }
+function showDashboard(user) {
+  loginView.classList.add("hidden");
+  dashboardView.classList.remove("hidden");
+  usernameEl.textContent = "@" + user.username;
+}
+
+function showLogin() {
+  dashboardView.classList.add("hidden");
+  loginView.classList.remove("hidden");
+}
 
 function onIncompletePaymentFound(payment) {}
 
-async function refreshMe() {
+async function checkAuth() {
   try {
-    const me = await window.API.me();
-    setOut(`Signed in ✅\n\n${JSON.stringify(me, null, 2)}`);
+    const resp = await window.API.me();
+    showDashboard(resp.user);
   } catch {
-    setOut("Not signed in.");
+    showLogin();
   }
 }
 
-btn.addEventListener("click", async () => {
-  setOut("Starting Pi authenticate…");
-
+loginBtn.addEventListener("click", async () => {
   try {
     const scopes = ["username"];
     const authResult = await Pi.authenticate(scopes, onIncompletePaymentFound);
     const accessToken = authResult?.accessToken;
-    if (!accessToken) throw new Error("No accessToken returned by Pi");
+    if (!accessToken) throw new Error("No accessToken");
 
-    setOut("Verifying with server…");
     const resp = await window.API.authPi(accessToken);
-
-    setOut(`Login OK ✅\n\n${JSON.stringify(resp.user, null, 2)}\n\nNow checking /api/me…`);
-    await refreshMe();
+    showDashboard(resp.user);
   } catch (e) {
-    setOut("Login failed: " + (e?.message || String(e)));
+    alert("Login failed: " + e.message);
   }
 });
 
-refreshMe();
+logoutBtn.addEventListener("click", async () => {
+  await window.API.logout();
+  showLogin();
+});
+
+checkAuth();
