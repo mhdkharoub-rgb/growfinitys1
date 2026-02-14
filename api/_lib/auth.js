@@ -1,3 +1,5 @@
+import jwt from "jsonwebtoken";
+
 export function sendJson(res, status, data) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -17,4 +19,26 @@ export async function readJsonBody(req) {
       }
     });
   });
+}
+
+function mustSecret() {
+  const s = process.env.APP_JWT_SECRET;
+  if (!s) throw new Error("Missing APP_JWT_SECRET env var");
+  return s;
+}
+
+export function signAppToken(payload) {
+  return jwt.sign(payload, mustSecret(), { expiresIn: "14d" });
+}
+
+export function verifyAppToken(token) {
+  return jwt.verify(token, mustSecret());
+}
+
+export function getBearerToken(req) {
+  const h = req.headers.authorization || req.headers.Authorization;
+  if (!h || typeof h !== "string") return null;
+  const [type, token] = h.split(" ");
+  if (type?.toLowerCase() !== "bearer" || !token) return null;
+  return token;
 }

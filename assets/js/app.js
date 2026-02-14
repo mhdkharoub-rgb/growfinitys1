@@ -3,17 +3,15 @@ const btn = document.getElementById("btn");
 
 function setOut(t) { out.textContent = t; }
 
-function isPiBrowser() {
-  return typeof window.Pi !== "undefined" && typeof window.Pi.authenticate === "function";
-}
+function onIncompletePaymentFound(payment) {}
 
-function onIncompletePaymentFound(payment) {
-  // stub
-}
-
-if (!isPiBrowser()) {
-  setOut("Please open this app in Pi Browser. Pi login will not work in Chrome.");
-  btn.disabled = true;
+async function refreshMe() {
+  try {
+    const me = await window.API.me();
+    setOut(`Signed in ✅\n\n${JSON.stringify(me, null, 2)}`);
+  } catch {
+    setOut("Not signed in.");
+  }
 }
 
 btn.addEventListener("click", async () => {
@@ -22,21 +20,17 @@ btn.addEventListener("click", async () => {
   try {
     const scopes = ["username"];
     const authResult = await Pi.authenticate(scopes, onIncompletePaymentFound);
-
     const accessToken = authResult?.accessToken;
     if (!accessToken) throw new Error("No accessToken returned by Pi");
 
-    setOut("Calling POST /api/auth-pi …");
+    setOut("Verifying with server…");
+    const resp = await window.API.authPi(accessToken);
 
-    const r = await fetch("/api/auth-pi", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken })
-    });
-
-    const text = await r.text();
-    setOut(`POST /api/auth-pi\nHTTP: ${r.status}\n\n${text}`);
+    setOut(`Login OK ✅\n\n${JSON.stringify(resp.user, null, 2)}\n\nNow checking /api/me…`);
+    await refreshMe();
   } catch (e) {
     setOut("Login failed: " + (e?.message || String(e)));
   }
 });
+
+refreshMe();

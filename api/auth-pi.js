@@ -1,4 +1,4 @@
-import { readJsonBody, sendJson } from "./_lib/auth.js";
+import { readJsonBody, sendJson, signAppToken } from "./_lib/auth.js";
 
 const PI_API_BASE = "https://api.minepi.com";
 
@@ -27,16 +27,21 @@ export default async function handler(req, res) {
     return sendJson(res, 502, { error: "Pi API unreachable" });
   }
 
-  const text = await meResp.text().catch(() => "");
-  if (meResp.status === 401) return sendJson(res, 401, { error: "Invalid Pi access token", details: text });
-  if (!meResp.ok) return sendJson(res, 502, { error: `Pi API error (${meResp.status})`, details: text });
+  const me = await meResp.json().catch(() => null);
 
-  let me;
-  try {
-    me = JSON.parse(text);
-  } catch {
-    return sendJson(res, 502, { error: "Pi /me returned non-JSON", details: text });
-  }
+  if (meResp.status === 401) return sendJson(res, 401, { error: "Invalid Pi access token", me });
+  if (!meResp.ok) return sendJson(res, 502, { error: `Pi API error (${meResp.status})`, me });
 
-  return sendJson(res, 200, { ok: true, me });
+  const uid = me?.uid;
+  const username = me?.username;
+
+  if (!uid || !username) return sendJson(res, 502, { error: "Unexpected Pi /me response", me });
+
+  const appToken = signAppToken({ uid, username });
+
+  return sendJson(res, 200, {
+    ok: true,
+    user: { uid, username },
+    appToken
+  });
 }
