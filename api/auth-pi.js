@@ -1,6 +1,6 @@
 import { readJsonBody, sendJson } from "./_lib/auth.js";
 
-const PI_API_BASE = "https://api.testnet.minepi.com";
+const PI_API_BASE = "https://api.minepi.com";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return sendJson(res, 405, { error: "Method not allowed" });
