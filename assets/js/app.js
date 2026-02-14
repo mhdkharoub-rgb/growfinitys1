@@ -3,8 +3,17 @@ const btn = document.getElementById("btn");
 
 function setOut(t) { out.textContent = t; }
 
+function isPiBrowser() {
+  return typeof window.Pi !== "undefined" && typeof window.Pi.authenticate === "function";
+}
+
 function onIncompletePaymentFound(payment) {
   // stub
+}
+
+if (!isPiBrowser()) {
+  setOut("Please open this app in Pi Browser. Pi login will not work in Chrome.");
+  btn.disabled = true;
 }
 
 btn.addEventListener("click", async () => {
@@ -26,7 +35,7 @@ btn.addEventListener("click", async () => {
     });
 
     const text = await r.text();
-    setOut(`Status: ${r.status}\n\n${text}`);
+    setOut(`POST /api/auth-pi\nHTTP: ${r.status}\n\n${text}`);
   } catch (e) {
     setOut("Login failed: " + (e?.message || String(e)));
   }
