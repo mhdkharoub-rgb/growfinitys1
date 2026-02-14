@@ -31,7 +31,7 @@ async function apiFetch(path, options = {}) {
 
 window.API = {
   me: () => apiFetch("/api/me"),
-  logout: () => { clearToken(); return Promise.resolve({ ok: true }); },
+
   authPi: async (accessToken) => {
     const resp = await apiFetch("/api/auth-pi", {
       method: "POST",
@@ -39,5 +39,10 @@ window.API = {
     });
     if (resp?.appToken) setToken(resp.appToken);
     return resp;
+  },
+
+  logout: () => {
+    clearToken();
+    return Promise.resolve({ ok: true });
   }
 };
