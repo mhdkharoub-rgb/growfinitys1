@@ -1,101 +1,79 @@
-const statusText = document.getElementById("statusText");
-const btnLogin = document.getElementById("btnLogin");
-const btnLogout = document.getElementById("btnLogout");
-const debugLog = document.getElementById("debugLog");
+const elStatus = document.getElementById("statusText");
+const elBtnLogin = document.getElementById("btnLogin");
+const elBtnLogout = document.getElementById("btnLogout");
+const elDebug = document.getElementById("debugLog");
 
-function log(obj) {
-  if (!debugLog) return;
-  debugLog.classList.remove("hidden");
-  debugLog.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+function setStatus(t) { if (elStatus) elStatus.textContent = t; }
+function showDebug(obj) {
+      if (!elDebug) return;
+        elDebug.classList.remove("hidden");
+          elDebug.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
 }
 
-function setLoggedOutUI() {
-  if (statusText) statusText.textContent = "Not signed in.";
-  if (btnLogin) btnLogin.classList.remove("hidden");
-  if (btnLogout) btnLogout.classList.add("hidden");
-}
-
-function setAuthedUI(user) {
-  if (statusText) statusText.textContent = `Signed in ✅ (${user.username})`;
-  if (btnLogin) btnLogin.classList.add("hidden");
-  if (btnLogout) btnLogout.classList.remove("hidden");
+function isPiBrowser() {
+      // Pi Browser user agent usually includes "PiBrowser"
+        return /PiBrowser/i.test(navigator.userAgent || "");
 }
 
 async function refreshMe() {
-  try {
-    const data = await window.API.me();
-    setAuthedUI(data.user);
-  } catch {
-    setLoggedOutUI();
-  }
+      try {
+            const me = await window.API.me();
+                setStatus(`Signed in ✅ (@${me.user.username})`);
+                    elBtnLogin?.classList.add("hidden");
+                        elBtnLogout?.classList.remove("hidden");
+      } catch (e) {
+            setStatus("Not signed in.");
+                elBtnLogin?.classList.remove("hidden");
+                    elBtnLogout?.classList.add("hidden");
+      }
 }
 
-btnLogin?.addEventListener("click", async () => {
-  try {
-    if (statusText) statusText.textContent = "Starting Pi authenticate…";
+function bootInfo() {
+      showDebug({
+            ua: navigator.userAgent,
+                isPiBrowser: isPiBrowser(),
+                    hasPiSdk: Boolean(window.Pi),
+                        origin: window.location.origin
+      });
+}
 
-    const scopes = ["username", "payments"];
-    const onIncompletePaymentFound = (payment) => console.log("incomplete payment", payment);
+elBtnLogin?.addEventListener("click", async () => {
+      try {
+            showDebug({ step: "login_click", hasPiSdk: Boolean(window.Pi) });
 
-    const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
+                if (!window.Pi) {
+                          alert("Pi SDK not loaded. Make sure pi-sdk.js is included and open in Pi Browser.");
+                                return;
+                }
 
-    if (statusText) statusText.textContent = "Verifying with server…";
-    const result = await window.API.authPi(auth.accessToken);
-    log(result);
+                    setStatus("Starting Pi authenticate…");
 
-    await refreshMe();
-  } catch (e) {
-    log({ error: e.message || String(e), details: e.data || null });
-    alert(`Login failed: ${e.message || e}`);
-  }
+                        const scopes = ["username", "payments"];
+                            const onIncompletePaymentFound = (payment) => showDebug({ step: "incomplete_payment", payment });
+
+                                const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
+                                    showDebug({ step: "pi_auth_ok", authKeys: Object.keys(auth || {}) });
+
+                                        setStatus("Verifying with server…");
+                                            const result = await window.API.authPi(auth.accessToken);
+                                                showDebug({ step: "server_auth_ok", result });
+
+                                                    await refreshMe();
+      } catch (e) {
+            showDebug({ step: "login_error", message: e.message || String(e), data: e.data || null });
+                alert(`Login failed: ${e.message || e}`);
+      }
 });
 
-btnLogout?.addEventListener("click", async () => {
-  try { await window.API.logout(); } finally { setLoggedOutUI(); }
+elBtnLogout?.addEventListener("click", async () => {
+      try {
+            await window.API.logout();
+      } finally {
+            await refreshMe();
+      }
 });
 
-// BUY buttons
-document.addEventListener("click", async (e) => {
-  const btn = e.target.closest("[data-plan][data-amount]");
-  if (!btn) return;
-
-  const plan = btn.getAttribute("data-plan");
-  const amount = Number(btn.getAttribute("data-amount"));
-
-  try {
-    if (!window.Pi?.createPayment) {
-      alert("Pi payments not available. Open inside Pi Browser.");
-      return;
-    }
-
-    // OPTIONAL: make sure user is logged in (session cookie exists)
-    await window.API.me();
-
-    const paymentData = {
-      amount,
-      memo: `Growfinitys ${plan.toUpperCase()} membership (monthly)`,
-      metadata: { plan, period: "monthly", ts: Date.now() }
-    };
-
-    const paymentCallbacks = {
-      onReadyForServerApproval: async (paymentId) => {
-        log({ step: "onReadyForServerApproval", paymentId });
-        await window.API.payApprove(paymentId);
-      },
-      onReadyForServerCompletion: async (paymentId, txid) => {
-        log({ step: "onReadyForServerCompletion", paymentId, txid });
-        await window.API.payComplete(paymentId, txid);
-        await refreshMe();
-      },
-      onCancel: (paymentId) => log({ step: "onCancel", paymentId }),
-      onError: (error, payment) => log({ step: "onError", error: String(error), payment })
-    };
-
-    await window.Pi.createPayment(paymentData, paymentCallbacks);
-  } catch (err) {
-    log({ purchaseError: err.message || String(err), details: err.data || null });
-    alert(`Payment failed: ${err.message || err}`);
-  }
+window.addEventListener("load", () => {
+      bootInfo();
+        refreshMe();
 });
-
-refreshMe();
