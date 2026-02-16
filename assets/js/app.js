@@ -1,117 +1,101 @@
-const loginView = document.getElementById("loginView");
-const dashboardView = document.getElementById("dashboardView");
-const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
+const statusText = document.getElementById("statusText");
+const btnLogin = document.getElementById("btnLogin");
+const btnLogout = document.getElementById("btnLogout");
+const debugLog = document.getElementById("debugLog");
 
-const usernameEl = document.getElementById("username");
-const tierEl = document.getElementById("tier");
-const expiresEl = document.getElementById("expires");
-const signalsEl = document.getElementById("signals");
-
-const btnBasic = document.getElementById("buyBasic");
-const btnPro = document.getElementById("buyPro");
-const btnVip = document.getElementById("buyVip");
-
-function showDashboard(user) {
-  loginView.classList.add("hidden");
-  dashboardView.classList.remove("hidden");
-  usernameEl.textContent = "@" + user.username;
+function log(obj) {
+  if (!debugLog) return;
+  debugLog.classList.remove("hidden");
+  debugLog.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
 }
 
-function showLogin() {
-  dashboardView.classList.add("hidden");
-  loginView.classList.remove("hidden");
+function setLoggedOutUI() {
+  if (statusText) statusText.textContent = "Not signed in.";
+  if (btnLogin) btnLogin.classList.remove("hidden");
+  if (btnLogout) btnLogout.classList.add("hidden");
 }
 
-function onIncompletePaymentFound(payment) {}
-
-function formatDate(d) {
-  if (!d) return "-";
-  const dt = new Date(d);
-  return isNaN(dt.getTime()) ? "-" : dt.toISOString().slice(0, 10);
+function setAuthedUI(user) {
+  if (statusText) statusText.textContent = `Signed in ✅ (${user.username})`;
+  if (btnLogin) btnLogin.classList.add("hidden");
+  if (btnLogout) btnLogout.classList.remove("hidden");
 }
 
-async function loadMembership() {
-  const m = await window.API.membership();
-  tierEl.textContent = m.user.active ? m.user.tier.toUpperCase() : "BASIC (expired → basic access)";
-  expiresEl.textContent = formatDate(m.user.subscriptionExpires);
-}
-
-function renderSignals(items) {
-  if (!items?.length) {
-    signalsEl.innerHTML = "<div class='muted'>No signals yet.</div>";
-    return;
-  }
-
-  signalsEl.innerHTML = items.map(s => `
-    <div class="signal">
-      <div class="row">
-        <div class="asset">${s.asset} <span class="badge">${s.market}</span></div>
-        <div class="tier">${(s.tier || "basic").toUpperCase()}</div>
-      </div>
-      <div class="row2">
-        <span class="pill">${s.timeframe}</span>
-        <span class="pill ${s.side === "buy" ? "buy" : "sell"}">${s.side.toUpperCase()}</span>
-      </div>
-      <div class="levels">
-        <div>Entry: <b>${s.entry ?? "-"}</b></div>
-        <div>TP: <b>${s.takeProfit ?? "-"}</b></div>
-        <div>SL: <b>${s.stopLoss ?? "-"}</b></div>
-      </div>
-      ${s.notes ? `<div class="notes">${s.notes}</div>` : ""}
-      <div class="muted">${new Date(s.createdAt).toISOString().replace("T"," ").slice(0,16)}Z</div>
-    </div>
-  `).join("");
-}
-
-async function loadSignals() {
-  const r = await window.API.signals();
-  renderSignals(r.signals);
-}
-
-async function checkAuth() {
+async function refreshMe() {
   try {
-    const me = await window.API.me();
-    showDashboard(me.user);
-    await loadMembership();
-    await loadSignals();
+    const data = await window.API.me();
+    setAuthedUI(data.user);
   } catch {
-    showLogin();
+    setLoggedOutUI();
   }
 }
 
-async function doSubscribe(tier) {
+btnLogin?.addEventListener("click", async () => {
   try {
-    // placeholder until we wire Pi payments
-    await window.API.subscribe(tier);
-  } catch (e) {
-    alert(e.message);
-  }
-}
+    if (statusText) statusText.textContent = "Starting Pi authenticate…";
 
-loginBtn.addEventListener("click", async () => {
-  try {
-    const scopes = ["username"];
-    const authResult = await Pi.authenticate(scopes, onIncompletePaymentFound);
-    const accessToken = authResult?.accessToken;
-    if (!accessToken) throw new Error("No accessToken");
+    const scopes = ["username", "payments"];
+    const onIncompletePaymentFound = (payment) => console.log("incomplete payment", payment);
 
-    const resp = await window.API.authPi(accessToken);
-    showDashboard(resp.user);
-    await loadMembership();
-    await loadSignals();
+    const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
+
+    if (statusText) statusText.textContent = "Verifying with server…";
+    const result = await window.API.authPi(auth.accessToken);
+    log(result);
+
+    await refreshMe();
   } catch (e) {
-    alert("Login failed: " + e.message);
+    log({ error: e.message || String(e), details: e.data || null });
+    alert(`Login failed: ${e.message || e}`);
   }
 });
 
-logoutBtn.addEventListener("click", async () => {
-  await window.API.logout();
-  showLogin();
+btnLogout?.addEventListener("click", async () => {
+  try { await window.API.logout(); } finally { setLoggedOutUI(); }
 });
 
-btnBasic.addEventListener("click", () => doSubscribe("basic"));
-btnPro.addEventListener("click", () => doSubscribe("pro"));
-btnVip.addEventListener("click", () => doSubscribe("vip"));
+// BUY buttons
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-plan][data-amount]");
+  if (!btn) return;
 
-checkAuth();
+  const plan = btn.getAttribute("data-plan");
+  const amount = Number(btn.getAttribute("data-amount"));
+
+  try {
+    if (!window.Pi?.createPayment) {
+      alert("Pi payments not available. Open inside Pi Browser.");
+      return;
+    }
+
+    // OPTIONAL: make sure user is logged in (session cookie exists)
+    await window.API.me();
+
+    const paymentData = {
+      amount,
+      memo: `Growfinitys ${plan.toUpperCase()} membership (monthly)`,
+      metadata: { plan, period: "monthly", ts: Date.now() }
+    };
+
+    const paymentCallbacks = {
+      onReadyForServerApproval: async (paymentId) => {
+        log({ step: "onReadyForServerApproval", paymentId });
+        await window.API.payApprove(paymentId);
+      },
+      onReadyForServerCompletion: async (paymentId, txid) => {
+        log({ step: "onReadyForServerCompletion", paymentId, txid });
+        await window.API.payComplete(paymentId, txid);
+        await refreshMe();
+      },
+      onCancel: (paymentId) => log({ step: "onCancel", paymentId }),
+      onError: (error, payment) => log({ step: "onError", error: String(error), payment })
+    };
+
+    await window.Pi.createPayment(paymentData, paymentCallbacks);
+  } catch (err) {
+    log({ purchaseError: err.message || String(err), details: err.data || null });
+    alert(`Payment failed: ${err.message || err}`);
+  }
+});
+
+refreshMe();
