@@ -1,4 +1,4 @@
-const elStatus = document.getElementById("statusText");
+const elStatus = document.getElementById("status");
 const elBtnLogin = document.getElementById("btnLogin");
 const elBtnLogout = document.getElementById("btnLogout");
 const elDebug = document.getElementById("debugLog");
@@ -39,17 +39,24 @@ async function refreshMe() {
       try {
             const data = await window.API.me();
 
-                if (data && data.user) {
-                          setStatus(`Signed in ✅ (@${data.user.username})`);
-                                elBtnLogin?.classList.add("hidden");
-                                      elBtnLogout?.classList.remove("hidden");
+                if (data && data.ok && data.user) {
+                          const username = data.user.username;
+
+                                document.querySelector("#status").innerText =
+                                        `Signed in ✅ (@${username})`;
+
+                                              document.querySelector("#btnLogin").style.display = "none";
+                                                    document.querySelector("#btnLogout").style.display = "inline-block";
+
                 } else {
                           throw new Error("No user");
                 }
-      } catch {
-            setStatus("Not signed in.");
-                elBtnLogin?.classList.remove("hidden");
-                    elBtnLogout?.classList.add("hidden");
+
+      } catch (err) {
+            document.querySelector("#status").innerText = "Not signed in.";
+
+                document.querySelector("#btnLogin").style.display = "inline-block";
+                    document.querySelector("#btnLogout").style.display = "none";
       }
 }
 
