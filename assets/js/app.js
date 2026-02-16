@@ -37,10 +37,15 @@ async function initPi() {
 
 async function refreshMe() {
       try {
-            const me = await window.API.me();
-                setStatus(`Signed in ✅ (@${me.user.username})`);
-                    elBtnLogin?.classList.add("hidden");
-                        elBtnLogout?.classList.remove("hidden");
+            const data = await window.API.me();
+
+                if (data && data.user) {
+                          setStatus(`Signed in ✅ (@${data.user.username})`);
+                                elBtnLogin?.classList.add("hidden");
+                                      elBtnLogout?.classList.remove("hidden");
+                } else {
+                          throw new Error("No user");
+                }
       } catch {
             setStatus("Not signed in.");
                 elBtnLogin?.classList.remove("hidden");
