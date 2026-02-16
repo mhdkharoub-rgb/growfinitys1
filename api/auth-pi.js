@@ -1,4 +1,4 @@
-import { readJsonBody, sendJson, signAppToken } from "./_lib/auth.js";
+import { readJsonBody, sendJson, writeSession } from "./_lib/auth.js";
 import { connectDB } from "./_lib/db.js";
 import User from "../models/User.js";
 
@@ -38,11 +38,8 @@ export default async function handler(req, res) {
       await user.save();
     }
 
-    const appToken = signAppToken({
-      uid,
-      username,
-      tier: user.tier
-    });
+    // Set session cookie
+    writeSession(res, { uid, username, tier: user.tier });
 
     return sendJson(res, 200, {
       ok: true,
@@ -51,8 +48,7 @@ export default async function handler(req, res) {
         username,
         tier: user.tier,
         subscriptionExpires: user.subscriptionExpires
-      },
-      appToken
+      }
     });
   } catch (err) {
     return sendJson(res, 500, { error: "Server crash", message: err?.message || String(err) });
