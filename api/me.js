@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
   try {
     const s = verifyAppToken(token);
-    return sendJson(res, 200, { ok: true, user: { uid: s.uid, username: s.username } });
+    return sendJson(res, 200, { ok: true, user: { uid: s.uid, username: s.username, tier: s.tier } });
   } catch {
     return sendJson(res, 401, { error: "Not authenticated" });
   }

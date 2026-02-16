@@ -11,54 +11,108 @@
 </script>
 
 <style>
-  body {
-    font-family: system-ui;
-    padding:20px;
-    background:#0f0f0f;
-    color:white;
-  }
-  button {
-    padding:12px 16px;
-    border-radius:12px;
-    border:none;
-    background:#7c3aed;
-    color:white;
-    font-weight:600;
-  }
-  .card {
-    background:#1a1a1a;
-    padding:16px;
-    border-radius:16px;
-    margin-top:20px;
-  }
+  body { font-family: system-ui; padding:20px; background:#0f0f0f; color:white; }
+  h1 { margin: 0 0 14px; }
+  button { padding:12px 16px; border-radius:12px; border:none; background:#7c3aed; color:white; font-weight:700; }
+  button.secondary { background:#262626; }
+  button.danger { background:#ef4444; }
   .hidden { display:none; }
+
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .card { background:#171717; border:1px solid #262626; border-radius:16px; padding:16px; margin-top:14px; }
+  .muted { color:#a3a3a3; font-size: 12px; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap: 10px; }
+  .grid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .plan { background:#111; border:1px solid #262626; border-radius:16px; padding:14px; }
+  .plan h3 { margin: 0 0 6px; }
+  .price { font-size: 18px; font-weight: 800; }
+  .pill { display:inline-block; padding:4px 10px; border-radius:999px; background:#262626; font-size:12px; margin-right:6px; }
+  .pill.buy { background:#064e3b; }
+  .pill.sell { background:#7f1d1d; }
+  .badge { font-size: 11px; padding: 3px 8px; border-radius: 999px; background:#262626; margin-left: 6px; }
+  .signal { background:#111; border:1px solid #262626; border-radius:16px; padding:12px; margin-top:10px; }
+  .asset { font-weight: 800; }
+  .tier { font-size: 12px; color:#a3a3a3; }
+  .row2 { margin-top: 8px; }
+  .levels { display:flex; gap: 14px; margin-top: 10px; font-size: 13px; }
+  .notes { margin-top: 10px; font-size: 13px; color:#e5e5e5; }
 </style>
 </head>
 
 <body>
+  <div class="wrap">
+    <h1>Growfinitys</h1>
 
-<h1>Growfinitys</h1>
+    <div id="loginView" class="card">
+      <div class="row">
+        <div>
+          <div style="font-weight:800;">Welcome</div>
+          <div class="muted">Sign in with Pi to access your membership and signals.</div>
+        </div>
+        <button id="loginBtn">Sign in with Pi</button>
+      </div>
+    </div>
 
-<div id="loginView">
-  <button id="loginBtn">Sign in with Pi</button>
-</div>
+    <div id="dashboardView" class="hidden">
+      <div class="card">
+        <div class="row">
+          <div>
+            <div style="font-weight:800;">Account</div>
+            <div class="muted" id="username">-</div>
+          </div>
+          <button id="logoutBtn" class="danger">Logout</button>
+        </div>
 
-<div id="dashboardView" class="hidden">
-  <div class="card">
-    <h3>Welcome</h3>
-    <p id="username"></p>
+        <div style="margin-top:12px;" class="muted">
+          Tier: <b id="tier">-</b> &nbsp; | &nbsp; Expires: <b id="expires">-</b>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:800; margin-bottom:10px;">Membership Plans (Manual Monthly Purchase)</div>
+        <div class="grid">
+          <div class="plan">
+            <h3>Basic</h3>
+            <div class="price">215 Pi / month</div>
+            <div class="muted">Daily signals access (Basic tier)</div>
+            <div style="margin-top:10px;">
+              <button id="buyBasic" class="secondary">Buy Basic</button>
+            </div>
+          </div>
+          <div class="plan">
+            <h3>Pro</h3>
+            <div class="price">425 Pi / month</div>
+            <div class="muted">Basic + Pro signals</div>
+            <div style="margin-top:10px;">
+              <button id="buyPro">Buy Pro</button>
+            </div>
+          </div>
+          <div class="plan">
+            <h3>VIP</h3>
+            <div class="price">715 Pi / month</div>
+            <div class="muted">All signals + priority access</div>
+            <div style="margin-top:10px;">
+              <button id="buyVip">Buy VIP</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="muted" style="margin-top:10px;">
+          Payments are not wired yet (next step). Buttons will activate Pi payment flow.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div style="font-weight:800;">Signals Feed</div>
+          <div class="muted">Tier-gated</div>
+        </div>
+        <div id="signals"></div>
+      </div>
+    </div>
+
+    <script type="module" src="/assets/js/api.js"></script>
+    <script type="module" src="/assets/js/app.js"></script>
   </div>
-
-  <div class="card">
-    <h3>Premium AI Signals</h3>
-    <p>Coming soon...</p>
-  </div>
-
-  <button id="logoutBtn" style="margin-top:20px;background:#ef4444;">Logout</button>
-</div>
-
-<script type="module" src="/assets/js/api.js"></script>
-<script type="module" src="/assets/js/app.js"></script>
-
 </body>
 </html>

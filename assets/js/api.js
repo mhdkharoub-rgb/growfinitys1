@@ -1,14 +1,8 @@
 const TOKEN_KEY = "gf_app_token";
 
-function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-function setToken(t) {
-  localStorage.setItem(TOKEN_KEY, t);
-}
-function clearToken() {
-  localStorage.removeItem(TOKEN_KEY);
-}
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+function clearToken() { localStorage.removeItem(TOKEN_KEY); }
 
 async function apiFetch(path, options = {}) {
   const token = getToken();
@@ -38,7 +32,6 @@ async function apiFetch(path, options = {}) {
 
 window.API = {
   me: () => apiFetch("/api/me"),
-
   authPi: async (accessToken) => {
     const resp = await apiFetch("/api/auth-pi", {
       method: "POST",
@@ -47,9 +40,10 @@ window.API = {
     if (resp?.appToken) setToken(resp.appToken);
     return resp;
   },
+  logout: () => { clearToken(); return Promise.resolve({ ok: true }); },
 
-  logout: () => {
-    clearToken();
-    return Promise.resolve({ ok: true });
-  }
+  membership: () => apiFetch("/api/membership"),
+  signals: () => apiFetch("/api/signals"),
+  subscribe: (tier) =>
+    apiFetch("/api/subscribe", { method: "POST", body: JSON.stringify({ tier }) })
 };
