@@ -3,94 +3,36 @@ const elBtnLogin = document.getElementById("btnLogin");
 const elBtnLogout = document.getElementById("btnLogout");
 const elDebug = document.getElementById("debugLog");
 
-function setStatus(t) { if (elStatus) elStatus.textContent = t; }
+function setStatus(t) {
+      if (elStatus) elStatus.textContent = t;
+}
+
 function dbg(obj) {
-    if (!elDebug) return;
-      elDebug.style.whiteSpace = "pre-wrap";
-        elDebug.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
-}
-
-function appendDbg(obj) {
-    if (!elDebug) return;
-      const line = typeof obj === "string" ? obj : JSON.stringify(obj);
-        elDebug.textContent = (elDebug.textContent || "") + "\n" + line;
-}
-
-function isPiBrowser() {
-    return /PiBrowser/i.test(navigator.userAgent || "");
-}
-
-window.addEventListener("error", (e) => {
-    appendDbg({ globalError: String(e.message || e.error || e) });
-});
-
-dbg({
-    boot: "APP.JS LOADED ✅",
-      hasBtnLogin: Boolean(elBtnLogin),
-        hasPiSdk: Boolean(window.Pi),
-          isPiBrowser: isPiBrowser(),
-            ua: navigator.userAgent
-});
-
-async function refreshMe() {
-    try {
-          const me = await window.API.me();
-              setStatus(`Signed in ✅ (@${me.user.username})`);
-                  elBtnLogin?.classList.add("hidden");
-                      elBtnLogout?.classList.remove("hidden");
-    } catch {
-          setStatus("Not signed in.");
-              elBtnLogin?.classList.remove("hidden");
-                  elBtnLogout?.classList.add("hidden");
-    }
-}
-
-elBtnLogin?.addEventListener("click", async () => {
-    appendDbg("CLICK btnLogin ✅");
-
-      try {
-          if (!window.Pi) {
-                appendDbg("Pi SDK MISSING ❌");
-                  alert("Pi SDK not loaded. Check pi-sdk.js is included in index.html.");
-                        return;
-          }
-
-            setStatus("Starting Pi authenticate…");
-                appendDbg("Calling Pi.authenticate…");
-
-                    const scopes = ["username", "payments"];
-                        const onIncompletePaymentFound = (payment) => appendDbg({ incompletePayment: payment });
-
-                            const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
-                                appendDbg({ piAuthOk: true, keys: Object.keys(auth || {}) });
-
-                                    setStatus("Verifying with server…");
-                                        const result = await window.API.authPi(auth.accessToken);
-                                            appendDbg({ serverAuthOk: true, result });
-
-                                                await refreshMe();
-      } catch (e) {
-          appendDbg({ loginError: e.message || String(e), data: e.data || null });
-            alert(`Login failed: ${e.message || e}`);
-      }
-});
-
-elBtnLogout?.addEventListener("click", async () => {
-    try { await window.API.logout(); } finally { await refreshMe(); }
-});
-
-refreshMe();
-
-function setStatus(t) { if (elStatus) elStatus.textContent = t; }
-function showDebug(obj) {
       if (!elDebug) return;
-        elDebug.classList.remove("hidden");
-          elDebug.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+        elDebug.textContent =
+            typeof obj === "string"
+                  ? obj
+                        : JSON.stringify(obj, null, 2);
 }
 
-function isPiBrowser() {
-      // Pi Browser user agent usually includes "PiBrowser"
-        return /PiBrowser/i.test(navigator.userAgent || "");
+async function initPi() {
+      if (!window.Pi) {
+            dbg("❌ Pi SDK not loaded");
+                return false;
+      }
+
+        try {
+                window.Pi.init({
+                          version: "2.0",
+                                sandbox: false
+                });
+
+                    dbg("✅ Pi SDK initialized");
+                        return true;
+        } catch (err) {
+                dbg({ initError: err.message });
+                    return false;
+        }
 }
 
 async function refreshMe() {
@@ -99,59 +41,45 @@ async function refreshMe() {
                 setStatus(`Signed in ✅ (@${me.user.username})`);
                     elBtnLogin?.classList.add("hidden");
                         elBtnLogout?.classList.remove("hidden");
-      } catch (e) {
+      } catch {
             setStatus("Not signed in.");
                 elBtnLogin?.classList.remove("hidden");
                     elBtnLogout?.classList.add("hidden");
       }
 }
 
-function bootInfo() {
-      showDebug({
-            ua: navigator.userAgent,
-                isPiBrowser: isPiBrowser(),
-                    hasPiSdk: Boolean(window.Pi),
-                        origin: window.location.origin
-      });
-}
-
 elBtnLogin?.addEventListener("click", async () => {
       try {
-            showDebug({ step: "login_click", hasPiSdk: Boolean(window.Pi) });
+            const ready = await initPi();
+                if (!ready) return;
 
-                if (!window.Pi) {
-                          alert("Pi SDK not loaded. Make sure pi-sdk.js is included and open in Pi Browser.");
-                                return;
-                }
-
-                    setStatus("Starting Pi authenticate…");
+                    setStatus("Authenticating with Pi...");
 
                         const scopes = ["username", "payments"];
-                            const onIncompletePaymentFound = (payment) => showDebug({ step: "incomplete_payment", payment });
+                            const onIncompletePaymentFound = (payment) =>
+                                  console.log("Incomplete payment:", payment);
 
-                                const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
-                                    showDebug({ step: "pi_auth_ok", authKeys: Object.keys(auth || {}) });
+                                      const auth = await window.Pi.authenticate(
+                                              scopes,
+                                                    onIncompletePaymentFound
+                                      );
 
-                                        setStatus("Verifying with server…");
-                                            const result = await window.API.authPi(auth.accessToken);
-                                                showDebug({ step: "server_auth_ok", result });
+                                          dbg({ authSuccess: true });
 
-                                                    await refreshMe();
-      } catch (e) {
-            showDebug({ step: "login_error", message: e.message || String(e), data: e.data || null });
-                alert(`Login failed: ${e.message || e}`);
+                                              const result = await window.API.authPi(auth.accessToken);
+
+                                                  dbg(result);
+
+                                                      await refreshMe();
+      } catch (err) {
+            alert("Login failed: " + err.message);
+                dbg({ loginError: err.message });
       }
 });
 
 elBtnLogout?.addEventListener("click", async () => {
-      try {
-            await window.API.logout();
-      } finally {
-            await refreshMe();
-      }
+      await window.API.logout();
+        await refreshMe();
 });
 
-window.addEventListener("load", () => {
-      bootInfo();
-        refreshMe();
-});
+refreshMe();
