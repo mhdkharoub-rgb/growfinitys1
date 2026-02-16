@@ -1,56 +1,90 @@
-import { readJsonBody, sendJson, writeSession } from "./_lib/auth.js";
-import { connectDB } from "./_lib/db.js";
-import User from "../models/User.js";
+import jwt from "jsonwebtoken";
 
-const PI_API_BASE = "https://api.minepi.com";
+const PI_ME_URL = "https://api.minepi.com/v2/me";
 
 export default async function handler(req, res) {
+  // Always JSON
+  res.setHeader("Content-Type", "application/json");
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed", method: req.method });
+  }
+
   try {
-    if (req.method !== "POST") return sendJson(res, 405, { error: "Method not allowed" });
-
-    const body = await readJsonBody(req);
-    const accessToken = body?.accessToken;
-
-    if (!accessToken || typeof accessToken !== "string") {
-      return sendJson(res, 400, { error: "Missing accessToken" });
+    const { accessToken } = req.body || {};
+    if (!accessToken) {
+      return res.status(400).json({ error: "Missing accessToken" });
     }
 
-    // Verify Pi token
-    const piResp = await fetch(`${PI_API_BASE}/v2/me`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-
-    const me = await piResp.json().catch(() => null);
-    if (!piResp.ok) return sendJson(res, 401, { error: "Invalid Pi token", details: me });
-
-    const uid = me?.uid;
-    const username = me?.username;
-    if (!uid || !username) return sendJson(res, 502, { error: "Unexpected Pi /me response", details: me });
-
-    await connectDB();
-
-    let user = await User.findOne({ uid });
-    if (!user) user = await User.create({ uid, username, tier: "basic" });
-
-    // keep username fresh
-    if (user.username !== username) {
-      user.username = username;
-      await user.save();
+    const PI_SERVER_API_KEY = process.env.PI_SERVER_API_KEY;
+    if (!PI_SERVER_API_KEY) {
+      return res.status(500).json({ error: "Missing PI_SERVER_API_KEY env var" });
     }
 
-    // Set session cookie
-    writeSession(res, { uid, username, tier: user.tier });
-
-    return sendJson(res, 200, {
-      ok: true,
-      user: {
-        uid,
-        username,
-        tier: user.tier,
-        subscriptionExpires: user.subscriptionExpires
+    // Verify token with Pi /me
+    const r = await fetch(PI_ME_URL, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Pi-Server-API-Key": PI_SERVER_API_KEY
       }
     });
-  } catch (err) {
-    return sendJson(res, 500, { error: "Server crash", message: err?.message || String(err) });
+
+    const raw = await r.text();
+    let me = null;
+    try {
+      me = JSON.parse(raw);
+    } catch {
+      return res.status(502).json({
+        error: "Pi /me returned non-JSON",
+        status: r.status,
+        raw: raw.slice(0, 800)
+      });
+    }
+
+    if (!r.ok) {
+      return res.status(502).json({
+        error: "Pi /me error",
+        status: r.status,
+        details: me
+      });
+    }
+
+    // Create your app session token
+    const APP_JWT_SECRET = process.env.APP_JWT_SECRET;
+    if (!APP_JWT_SECRET) {
+      return res.status(500).json({ error: "Missing APP_JWT_SECRET env var" });
+    }
+
+    const token = jwt.sign(
+      {
+        uid: me.uid,
+        username: me.username,
+        scopes: me.credentials?.scopes || []
+      },
+      APP_JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // Cookie session
+    const isProd = process.env.NODE_ENV === "production";
+    res.setHeader(
+      "Set-Cookie",
+      [
+        `app_token=${token}; Path=/; HttpOnly; SameSite=None; Secure`,
+      ]
+    );
+
+    return res.status(200).json({
+      ok: true,
+      user: { uid: me.uid, username: me.username }
+    });
+  } catch (e) {
+    // Never let it crash without JSON
+    return res.status(500).json({
+      error: "auth-pi crashed",
+      message: e?.message || String(e),
+      // keep stack short to avoid huge payloads
+      stack: (e?.stack || "").split("\n").slice(0, 6).join("\n")
+    });
   }
 }
