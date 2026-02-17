@@ -10,7 +10,7 @@ function readCookie(req, name) {
   return decodeURIComponent(hit.slice(name.length + 1));
 }
 
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
   try {
     if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
@@ -24,7 +24,7 @@ module.exports = (req, res) => {
 
     return res.status(200).json({
       ok: true,
-      user: { uid: payload.uid, username: payload.username, tier: payload.tier || "basic" }
+      user: { uid: payload.uid, username: payload.username }
     });
   } catch {
     return res.status(401).json({ error: "not authenticated" });
