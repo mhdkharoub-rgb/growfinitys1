@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Growfinitys — Dashboard</title>
+    <link rel="stylesheet" href="/assets/css/style.css" />
+  </head>
+
+  <body>
+    <main class="container">
+      <h1 class="title">Growfinitys</h1>
+      <p class="subtitle">Crypto, Tokens, and Forex signals powered by AI.</p>
+
+      <section class="card" id="statusCard">
+        <div class="row">
+          <div>
+            <div class="label">Account</div>
+            <div class="value" id="statusText">Loading session…</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="btnLogout" class="btn btnGhost">Logout</button>
+        </div>
+
+        <pre class="log hidden" id="debugLog"></pre>
+      </section>
+
+      <section class="card" id="membershipSection">
+        <h2 class="cardTitle">Membership Plans (Manual Monthly Purchase)</h2>
+        <p class="muted" id="memberInfo">Loading…</p>
+
+        <div class="tiers">
+          <div class="tier">
+            <div class="tierName">Basic</div>
+            <div class="tierPrice">215 Pi / month</div>
+            <button class="btn btnSmall" data-plan="basic" data-amount="215">Purchase</button>
+          </div>
+          <div class="tier">
+            <div class="tierName">Pro</div>
+            <div class="tierPrice">425 Pi / month</div>
+            <button class="btn btnSmall" data-plan="pro" data-amount="425">Purchase</button>
+          </div>
+          <div class="tier">
+            <div class="tierName">VIP</div>
+            <div class="tierPrice">715 Pi / month</div>
+            <button class="btn btnSmall" data-plan="vip" data-amount="715">Purchase</button>
+          </div>
+        </div>
+
+        <p class="muted small">
+          Manual monthly purchase: each month you click "Purchase" to renew.
+        </p>
+      </section>
+
+      <section class="card" id="signalsSection">
+        <h2 class="cardTitle">Signals Feed</h2>
+        <p class="muted">Tier-gated (next step).</p>
+      </section>
+    </main>
+
+    <script src="/assets/js/api.js"></script>
+    <script>
+      // Dashboard is protected: if not logged in, go back to /
+      const statusText = document.getElementById("statusText");
+      const memberInfo = document.getElementById("memberInfo");
+      const debugLog = document.getElementById("debugLog");
+
+      async function loadMe() {
+        try {
+          const me = await window.API.me();
+          statusText.textContent = `Signed in ✅ (@${me.user.username})`;
+          memberInfo.textContent = `Tier: ${String(me.user.tier || "basic").toUpperCase()}  |  Expires: ${me.user.subscriptionExpires || "-"}`;
+          debugLog.textContent = JSON.stringify(me, null, 2);
+          debugLog.classList.remove("hidden");
+        } catch (e) {
+          // not authenticated
+          location.href = "/";
+        }
+      }
+
+      document.getElementById("btnLogout").addEventListener("click", async () => {
+        try { await window.API.logout(); } catch {}
+        location.href = "/";
+      });
+
+      // (Optional) Purchase buttons placeholder for now
+      document.querySelectorAll('button[data-plan]').forEach(btn => {
+        btn.addEventListener("click", () => {
+          alert("Payments not configured yet");
+        });
+      });
+
+      loadMe();
+    </script>
+  </body>
+</html>

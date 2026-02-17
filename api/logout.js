@@ -1,14 +1,10 @@
-
+import { sendJson } from "./_lib/auth.js";
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed", method: req.method });
-  }
+  if (req.method !== "POST") return sendJson(res, 405, { error: "Method not allowed" });
 
-  res.setHeader(
-    "Set-Cookie",
-    "app_token=; Path=/; HttpOnly; Max-Age=0; SameSite=None; Secure"
-  );
+  // Clear session by setting an expired cookie
+  res.setHeader("Set-Cookie", "gf_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0");
 
-  return res.status(200).json({ ok: true });
+  return sendJson(res, 200, { ok: true });
 }

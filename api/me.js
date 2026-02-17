@@ -1,36 +1,16 @@
-import jwt from "jsonwebtoken";
-
-function readCookie(req, name) {
-  const cookie = req.headers.cookie || "";
-  const parts = cookie.split(";").map(s => s.trim());
-  const found = parts.find(p => p.startsWith(name + "="));
-  return found ? decodeURIComponent(found.split("=").slice(1).join("=")) : null;
-}
+import { sendJson, requireUser } from "./_lib/auth.js";
+import { connectDB } from "./_lib/db.js";
+import User from "../models/User.js";
 
 export default async function handler(req, res) {
-  res.setHeader("Content-Type", "application/json");
-
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed", method: req.method });
-  }
+  if (req.method !== "GET") return sendJson(res, 405, { error: "Method not allowed" });
 
   try {
-    const token = readCookie(req, "app_token");
-    if (!token) return res.status(401).json({ error: "not authenticated" });
-
-    const secret = process.env.APP_JWT_SECRET;
-    const payload = jwt.verify(token, secret);
-
-    return res.status(200).json({
-      ok: true,
-      user: {
-        uid: payload.uid,
-        username: payload.username,
-        tier: payload.tier || "basic",
-        subscriptionExpires: payload.subscriptionExpires || null
-      }
-    });
-  } catch (e) {
-    return res.status(401).json({ error: "invalid session" });
+    const session = requireUser(req);
+    await connectDB();
+    const user = await User.findOne({ uid: session.uid });
+    return sendJson(res, 200, { ok: true, user: { uid: session.uid, username: session.username, tier: session.tier, subscriptionExpires: user?.subscriptionExpires } });
+  } catch (err) {
+    return sendJson(res, 401, { error: err.message });
   }
 }

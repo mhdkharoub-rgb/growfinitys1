@@ -1,55 +1,77 @@
-document.addEventListener("DOMContentLoaded", () => {
+// public/assets/js/app.js
 
-      const statusEl = document.getElementById("status");
-        const btnLogin = document.getElementById("btnLogin");
-          const btnLogout = document.getElementById("btnLogout");
+const statusText = document.getElementById("statusText");
+const loggedOutBlock = document.getElementById("loggedOutBlock");
+const loggedInBlock = document.getElementById("loggedInBlock");
+const debugLog = document.getElementById("debugLog");
 
-            async function refreshMe() {
-                    try {
-                              const data = await window.API.me();
+function showLoggedOut(msg = "Not signed in.") {
+  statusText.textContent = msg;
+  loggedOutBlock.classList.remove("hidden");
+  loggedInBlock.classList.add("hidden");
+  debugLog.classList.add("hidden");
+}
 
-                                    if (data && data.ok && data.user) {
-                                                statusEl.innerText = `Signed in ✅ (@${data.user.username})`;
-                                                        btnLogin.style.display = "none";
-                                                                btnLogout.style.display = "inline-block";
-                                    } else {
-                                                throw new Error("No user");
-                                    }
+function showLoggedIn(username, payload) {
+  statusText.textContent = `Signed in ✅ (@${username})`;
+  loggedOutBlock.classList.add("hidden");
+  loggedInBlock.classList.remove("hidden");
+  if (payload) {
+    debugLog.textContent = JSON.stringify(payload, null, 2);
+    debugLog.classList.remove("hidden");
+  }
+}
 
-                    } catch (err) {
-                              statusEl.innerText = "Not signed in.";
-                                    btnLogin.style.display = "inline-block";
-                                          btnLogout.style.display = "none";
-                    }
-            }
+// On home page: if already signed in, go straight to dashboard
+async function checkSession() {
+  try {
+    const me = await window.API.me();
+    // if session exists, redirect to dashboard
+    location.href = "/dashboard";
+    return;
+  } catch (e) {
+    showLoggedOut("Not signed in.");
+  }
+}
 
-              btnLogin.addEventListener("click", async () => {
-                    try {
-                              if (!window.Pi) {
-                                        alert("Pi SDK not loaded");
-                                                return;
-                              }
+async function doPiLogin() {
+  try {
+    // If Pi SDK isn't present, user isn't in Pi Browser
+    if (!window.Pi) {
+      alert("Please open this app in Pi Browser.");
+      return;
+    }
 
-                                    await window.Pi.init({ version: "2.0" });
+    // Ensure Pi SDK is initialized (you already do Pi.init in index.html)
+    const scopes = ["username", "payments"];
 
-                                          const auth = await window.Pi.authenticate(
-                                                    ["username"],
-                                                            () => {}
-                                          );
+    const authResult = await Pi.authenticate(scopes, (payment) => {
+      // not used here yet
+      console.log("Incomplete payment:", payment);
+    });
 
-                                                await window.API.authPi(auth.accessToken);
+    const accessToken = authResult?.accessToken;
+    if (!accessToken) throw new Error("No accessToken from Pi.authenticate");
 
-                                                      await refreshMe();
+    const res = await window.API.authPi(accessToken);
 
-                    } catch (err) {
-                              alert("Login failed: " + err.message);
-                    }
-              });
+    // redirect to real dashboard
+    location.href = "/dashboard";
+  } catch (e) {
+    alert(`Login failed: ${e.message || e}`);
+  }
+}
 
-                btnLogout.addEventListener("click", async () => {
-                        await window.API.logout();
-                            await refreshMe();
-                });
+async function doLogout() {
+  try {
+    await window.API.logout();
+  } catch {}
+  showLoggedOut("Not signed in.");
+}
 
-                  refreshMe();
-});
+// Wire buttons
+document.getElementById("btnPiLogin").addEventListener("click", doPiLogin);
+document.getElementById("btnLogout").addEventListener("click", doLogout);
+
+// Start
+checkSession();

@@ -23,47 +23,26 @@
         <div class="row">
           <div>
             <div class="label">Status</div>
-            <p id="status">Not signed in.</p>
+            <div class="value" id="statusText">Checking session…</div>
           </div>
         </div>
 
-        <div class="actions">
-          <button id="btnLogin">Sign in with Pi</button>
-          <button id="btnLogout" style="display:none;">Logout</button>
-        </div>
-
-        <pre id="debugLog" class="debug"></pre>
-      </section>
-
-      <section class="card hidden" id="memberCard">
-        <h2 class="cardTitle">Membership</h2>
-        <p class="muted" id="memberInfo">Loading…</p>
-
-        <div class="tiers">
-          <div class="tier">
-            <div class="tierName">Basic</div>
-            <div class="tierPrice">215 Pi / month</div>
-            <button class="btn btnSmall" data-plan="basic" data-amount="215">Purchase</button>
-          </div>
-          <div class="tier">
-            <div class="tierName">Pro</div>
-            <div class="tierPrice">425 Pi / month</div>
-            <button class="btn btnSmall" data-plan="pro" data-amount="425">Purchase</button>
-          </div>
-          <div class="tier">
-            <div class="tierName">VIP</div>
-            <div class="tierPrice">715 Pi / month</div>
-            <button class="btn btnSmall" data-plan="vip" data-amount="715">Purchase</button>
+        <div id="loggedOutBlock">
+          <div class="actions">
+            <button id="btnPiLogin" class="btn">Sign in with Pi</button>
           </div>
         </div>
 
-        <p class="muted small">
-          Manual monthly purchase: each month you click "Purchase" to renew.
-        </p>
+        <div id="loggedInBlock" class="hidden">
+          <div class="actions">
+            <button id="btnLogout" class="btn btnGhost">Logout</button>
+          </div>
+        </div>
+
+        <pre class="log hidden" id="debugLog"></pre>
       </section>
     </main>
 
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <script src="/assets/js/api.js"></script>
     <script src="/assets/js/app.js"></script>
   </body>

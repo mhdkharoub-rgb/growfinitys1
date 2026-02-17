@@ -8,31 +8,16 @@ async function apiFetch(path, options = {}) {
     }
   });
 
-  // Try JSON, fallback to TEXT (this is the important fix)
   let data = null;
-  let text = null;
-
-  try {
-    data = await res.json();
-  } catch {
-    try {
-      text = await res.text();
-    } catch {}
-  }
+  try { data = await res.json(); } catch {}
 
   if (!res.ok) {
-    const msg =
-      (data && (data.error || data.message)) ||
-      (text && text.slice(0, 500)) ||
-      `Request failed (${res.status})`;
-
+    const msg = data?.error || `Request failed (${res.status})`;
     const err = new Error(msg);
     err.status = res.status;
     err.data = data;
-    err.text = text;
     throw err;
   }
-
   return data;
 }
 
@@ -43,5 +28,18 @@ window.API = {
       method: "POST",
       body: JSON.stringify({ accessToken })
     }),
-  logout: () => apiFetch("/api/logout", { method: "POST" })
+  logout: () => apiFetch("/api/logout", { method: "POST" }),
+
+  // Pi payment server callbacks
+  payApprove: (paymentId) =>
+    apiFetch("/api/payments/approve", {
+      method: "POST",
+      body: JSON.stringify({ paymentId })
+    }),
+
+  payComplete: (paymentId, txid) =>
+    apiFetch("/api/payments/complete", {
+      method: "POST",
+      body: JSON.stringify({ paymentId, txid })
+    })
 };
