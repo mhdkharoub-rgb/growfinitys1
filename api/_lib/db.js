@@ -1,18 +1,25 @@
-import mongoose from "mongoose";
+const { MongoClient } = require("mongodb");
 
-let cached = global._mongoose;
-if (!cached) cached = global._mongoose = { conn: null, promise: null };
+let cached = global.mongo;
 
-export async function connectDB() {
+if (!cached) {
+  cached = global.mongo = { conn: null, promise: null };
+}
+
+async function connectToDatabase() {
   if (cached.conn) return cached.conn;
-  if (!process.env.MONGODB_URI) throw new Error("Missing MONGODB_URI");
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 8000
+    cached.promise = MongoClient.connect(process.env.MONGODB_URI).then(client => {
+      return {
+        client,
+        db: client.db()
+      };
     });
   }
 
   cached.conn = await cached.promise;
   return cached.conn;
 }
+
+module.exports = { connectToDatabase };
