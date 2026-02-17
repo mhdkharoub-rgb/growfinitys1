@@ -4,6 +4,7 @@
   "private": true,
   "description": "Growfinitys Pi v2 mobile app (Vercel + Pi SDK v2)",
   "dependencies": {
+    "axios": "^1.13.5",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.10.0"
   },

@@ -22,4 +22,9 @@ async function connectToDatabase() {
   return cached.conn;
 }
 
-module.exports = { connectToDatabase };
+async function getDb() {
+  const conn = await connectToDatabase();
+  return conn.db;
+}
+
+module.exports = { connectToDatabase, getDb };
