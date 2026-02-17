@@ -1,6 +1,5 @@
 // api/me.js
 const jwt = require("jsonwebtoken");
-
 const COOKIE_NAME = "gf_session";
 
 function readCookie(req, name) {
@@ -11,24 +10,23 @@ function readCookie(req, name) {
   return decodeURIComponent(hit.slice(name.length + 1));
 }
 
-module.exports = async (req, res) => {
+module.exports = (req, res) => {
   try {
-    const APP_JWT_SECRET = process.env.APP_JWT_SECRET;
-    if (!APP_JWT_SECRET) return res.status(500).json({ error: "Missing APP_JWT_SECRET" });
+    if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+
+    const secret = process.env.APP_JWT_SECRET;
+    if (!secret) return res.status(500).json({ error: "Missing APP_JWT_SECRET" });
 
     const token = readCookie(req, COOKIE_NAME);
-    if (!token) return res.status(200).json({ ok: true, me: null });
+    if (!token) return res.status(401).json({ error: "not authenticated" });
 
-    const payload = jwt.verify(token, APP_JWT_SECRET);
+    const payload = jwt.verify(token, secret);
+
     return res.status(200).json({
       ok: true,
-      me: {
-        uid: payload.uid,
-        username: payload.username
-      }
+      user: { uid: payload.uid, username: payload.username, tier: payload.tier || "basic" }
     });
-  } catch (e) {
-    // invalid token -> treat as logged out
-    return res.status(200).json({ ok: true, me: null });
+  } catch {
+    return res.status(401).json({ error: "not authenticated" });
   }
 };

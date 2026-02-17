@@ -62,34 +62,27 @@
 
     <script src="/assets/js/api.js"></script>
     <script>
-      // Dashboard is protected: if not logged in, go back to /
       const statusText = document.getElementById("statusText");
       const memberInfo = document.getElementById("memberInfo");
-      const debugLog = document.getElementById("debugLog");
 
       async function loadMe() {
         try {
-          const me = await window.API.me();
+          const me = await window.API.me(); // 200 or throws 401
+
           statusText.textContent = `Signed in ✅ (@${me.user.username})`;
-          memberInfo.textContent = `Tier: ${String(me.user.tier || "basic").toUpperCase()}  |  Expires: ${me.user.subscriptionExpires || "-"}`;
-          debugLog.textContent = JSON.stringify(me, null, 2);
-          debugLog.classList.remove("hidden");
+          memberInfo.textContent = `Tier: ${String(me.user.tier || "basic").toUpperCase()}`;
+
         } catch (e) {
-          // not authenticated
-          location.href = "/";
+          // stop blinking: show message + link instead of instant redirect loop
+          statusText.textContent = "Session expired. Please sign in again.";
+          memberInfo.textContent = "Tap to return to sign-in.";
+          setTimeout(() => location.replace("/"), 800);
         }
       }
 
       document.getElementById("btnLogout").addEventListener("click", async () => {
         try { await window.API.logout(); } catch {}
-        location.href = "/";
-      });
-
-      // (Optional) Purchase buttons placeholder for now
-      document.querySelectorAll('button[data-plan]').forEach(btn => {
-        btn.addEventListener("click", () => {
-          alert("Payments not configured yet");
-        });
+        location.replace("/");
       });
 
       loadMe();
