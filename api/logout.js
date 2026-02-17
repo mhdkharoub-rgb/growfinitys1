@@ -1,10 +1,11 @@
-import { sendJson } from "./_lib/auth.js";
+// api/logout.js
+const { clearCookie } = require("./_lib/cookies");
+const COOKIE_NAME = "gf_session";
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") return sendJson(res, 405, { error: "Method not allowed" });
-
-  // Clear session by setting an expired cookie
-  res.setHeader("Set-Cookie", "gf_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0");
-
-  return sendJson(res, 200, { ok: true });
-}
+module.exports = async (req, res) => {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed", method: req.method });
+  }
+  clearCookie(res, COOKIE_NAME);
+  return res.status(200).json({ ok: true });
+};
